@@ -26,6 +26,7 @@ XINTERVAL = config['graph_interval']
 TEMPMIN = config['temp_min']
 TEMPMAX = config['temp_max']
 INCLUDEPTON = config['include_peloton']
+TIMEZONE = config['time_zone']
 FONTSMALL = 13
 FONTMED = 16
 FONTLARGE = 24
@@ -85,12 +86,16 @@ for csv in sftp.listdir():
 
 sftp.close()
 
+data.to_excel('co2-data.xlsx')
+
 # ----------------------------------------------------------------------
 # Start Data Plot
 # ----------------------------------------------------------------------
 
-# Resample data to sample rate
+# Localize data
+data.index = data.index.tz_localize(TIMEZONE)
 
+# Resample data to sample rate
 most_recent_timestamp = data.index.max().replace(
     second=0, 
     microsecond=0, 
@@ -203,7 +208,7 @@ indices = []
 
 for i in range(len(data_resample.index)):
 
-    if (data_resample.index[i].hour >= 18) or (data_resample.index[i].hour <= 6):
+    if (data_resample.index[i].hour >= 18) or (data_resample.index[i].hour < 6):
         
         indices.append(i)
 
@@ -226,33 +231,33 @@ if INCLUDEPTON:
 
     logging.info(f'Fetching Peloton workout data.')
     peloton_data = get_workouts()
-    peloton_data_filtered = peloton_data[peloton_data.created_at_clean >= data_window]
+
+    peloton_data_filtered = peloton_data[peloton_data.created_at_clean_localized >= data_window]
     logging.info(f'Overlaying {peloton_data_filtered.shape[0]} workout(s).')
 
     for i, row in peloton_data_filtered.iterrows():
 
-        highlight_start = data_resample.index[data_resample.index <= row.created_at_clean].max()
-        highlight_end = data_resample.index[data_resample.index >= row.end_time_clean].min()
+        peloton_highlight = {
+            'xmin':data_resample.index[data_resample.index <= row.created_at_clean_localized].max(),
+            'xmax':data_resample.index[data_resample.index >= row.end_time_clean_localized].min(),
+            'facecolor':'pink',
+            'edgecolor':'none',
+            'alpha':0.5
+        }
 
-        ax0.axvspan(highlight_start,
-                    highlight_end,
-                    facecolor='pink',
-                    edgecolor='none',
-                    alpha=0.1)
+        if np.logical_and(
+            np.logical_not(pd.isnull(peloton_highlight['xmin'])),
+            np.logical_not(pd.isnull(peloton_highlight['xmax']))):
 
-        ax1.axvspan(highlight_start,
-                highlight_end,
-                facecolor='pink',
-                edgecolor='none',
-                alpha=0.1)
+            ax0.axvspan(**peloton_highlight)
+            ax1.axvspan(**peloton_highlight)
 
 # Labels
 plt.suptitle('Home Office & Workout Room CO$_2$ Levels',fontsize=24, y=1)
 ax0.set_title('Rolling 48 Hour Window / 15 Minute Intervals', fontsize=16)
 ax0.set_ylabel('CO$_2$ Concentration (ppm)')
 ax1.set_ylabel('Temperature ($^\circ$C)')
-ax1.set_xlabel('Time')
+ax1.set_xlabel(f'Time\nUpdated: {data.index.max()}')
 
 logging.info(f'Exporting chart.')
 fig.savefig('co2-chart.jpg', bbox_inches='tight')
-data.to_excel('co2-data.xlsx')

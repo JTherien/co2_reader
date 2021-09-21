@@ -10,6 +10,7 @@ def get_workouts():
 
     USER = config['peloton_user']
     PASSWORD = config['peloton_pass']
+    TIMEZONE = config['time_zone']
 
     # Authenticate user
     s = requests.Session()
@@ -32,8 +33,9 @@ def get_workouts():
 
     # Flatten API reponse into a temporary dataframe
     df_workouts = pd.json_normalize(data['data'])
-    df_workouts['created_at_clean'] = pd.to_datetime(df_workouts.created_at, unit='s')
-    df_workouts['end_time_clean'] = pd.to_datetime(df_workouts.end_time, unit='s')
-    df_workouts['duration'] = df_workouts.end_time_clean - df_workouts.created_at_clean
+    df_workouts['created_at_clean_utc'] = pd.to_datetime(df_workouts.created_at, unit='s', utc=True)
+    df_workouts['created_at_clean_localized'] = df_workouts.created_at_clean_utc.dt.tz_convert(TIMEZONE)
+    df_workouts['end_time_clean_utc'] = pd.to_datetime(df_workouts.end_time, unit='s', utc=True)
+    df_workouts['end_time_clean_localized'] = df_workouts.end_time_clean_utc.dt.tz_convert(TIMEZONE)
 
     return df_workouts
