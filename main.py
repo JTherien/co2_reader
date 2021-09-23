@@ -7,6 +7,7 @@ from peloton import get_workouts
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
 from matplotlib import gridspec
+from matplotlib import rcParams
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,6 +95,7 @@ data.to_excel('co2-data.xlsx')
 
 # Localize data
 data.index = data.index.tz_localize(TIMEZONE)
+rcParams['timezone'] = TIMEZONE
 
 # Resample data to sample rate
 most_recent_timestamp = data.index.max().replace(
@@ -257,7 +259,7 @@ plt.suptitle('Home Office & Workout Room CO$_2$ Levels',fontsize=24, y=1)
 ax0.set_title('Rolling 48 Hour Window / 15 Minute Intervals', fontsize=16)
 ax0.set_ylabel('CO$_2$ Concentration (ppm)')
 ax1.set_ylabel('Temperature ($^\circ$C)')
-ax1.set_xlabel(f'Time\nUpdated: {data.index.max()}')
+ax1.set_xlabel(f"Time\nUpdated: {data.index.max().strftime('%Y-%m-%d %I:%M %p %Z')}")
 
 logging.info(f'Exporting chart.')
 fig.savefig('co2-chart.jpg', bbox_inches='tight')
