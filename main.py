@@ -94,7 +94,7 @@ data.to_excel('co2-data.xlsx')
 # ----------------------------------------------------------------------
 
 # Localize data
-data.index = data.index.tz_localize(TIMEZONE)
+data.index = data.index.tz_localize(TIMEZONE, ambiguous='infer')
 rcParams['timezone'] = TIMEZONE
 
 # Resample data to sample rate
